@@ -19,9 +19,9 @@ def pvcs(namespace=None, select=False):
     ou use --select para escolher o namespace interativamente.
     
     Exemplos:
-        $ ek-cli pvcs                    # Mostra PVCs de todos os namespaces
-        $ ek-cli pvcs -n production      # Mostra PVCs do namespace production
-        $ ek-cli pvcs -s                 # Seleciona o namespace interativamente
+        $ ekli pvcs                    # Mostra PVCs de todos os namespaces
+        $ ekli pvcs -n production      # Mostra PVCs do namespace production
+        $ ekli pvcs -s                 # Seleciona o namespace interativamente
     """
     try:
         # Se foi pedido para selecionar o namespace interativamente
@@ -198,8 +198,8 @@ def pvs(detailed=False):
     Use a opção --detailed para ver informações mais detalhadas sobre cada volume.
     
     Exemplos:
-        $ ek-cli pvs                # Mostra lista básica de PVs
-        $ ek-cli pvs -d             # Mostra detalhes dos PVs
+        $ ekli pvs                # Mostra lista básica de PVs
+        $ ekli pvs -d             # Mostra detalhes dos PVs
     """
     try:
         # Executa o comando kubectl para obter os PVs
@@ -323,10 +323,10 @@ def storage(namespace=None, select=False, detailed=False):
     Por padrão, mostra PVCs de todos os namespaces e todos os PVs.
     
     Exemplos:
-        $ ek-cli storage                 # Visão geral de armazenamento
-        $ ek-cli storage -n production   # Filtra PVCs por namespace
-        $ ek-cli storage -s              # Seleciona o namespace interativamente
-        $ ek-cli storage -d              # Mostra detalhes adicionais
+        $ ekli storage                 # Visão geral de armazenamento
+        $ ekli storage -n production   # Filtra PVCs por namespace
+        $ ekli storage -s              # Seleciona o namespace interativamente
+        $ ekli storage -d              # Mostra detalhes adicionais
     """
     try:
         # Reutiliza a mesma lógica dos comandos pvs e pvcs

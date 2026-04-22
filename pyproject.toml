@@ -20,7 +20,7 @@ dependencies = [
 
 [project.scripts]
 kube-cli = "kube_cli:cli"
-ek-cli = "kube_cli:cli"
+ekli = "kube_cli:cli"
 
 [tool.setuptools.packages.find]
 where = ["."]

@@ -2,7 +2,7 @@
 
 CLI para simplificar operações diárias no Kubernetes (AWS EKS e Azure AKS).
 
-**Comandos:** `kube-cli` (principal) e `ek-cli` (atalho).
+**Comandos:** `kube-cli` (principal) e `ekli` (atalho).
 
 ## Instalação rápida
 

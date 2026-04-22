@@ -19,11 +19,11 @@ fi
 if [[ "$OSTYPE" == "darwin"* ]]; then
     INSTALL_DIR="$HOME/.easy-kube-cli"
     WRAPPER_SCRIPT="$HOME/.local/bin/kube-cli"
-    EKCLI_LINK="$HOME/.local/bin/ek-cli"
+    EKLI_LINK="$HOME/.local/bin/ekli"
 else
     INSTALL_DIR="/opt/easy-kube-cli"
     WRAPPER_SCRIPT="/usr/local/bin/kube-cli"
-    EKCLI_LINK="/usr/local/bin/ek-cli"
+    EKLI_LINK="/usr/local/bin/ekli"
 fi
 
 # Remove o comando principal
@@ -32,14 +32,14 @@ if [ -f "$WRAPPER_SCRIPT" ]; then
     rm -f "$WRAPPER_SCRIPT"
 fi
 
-# Remove o link simbólico ek-cli
-if [ -L "$EKCLI_LINK" ] || [ -f "$EKCLI_LINK" ]; then
-    echo -e "${YELLOW}🗑️  Removendo link simbólico ek-cli...${NC}"
-    rm -f "$EKCLI_LINK"
+# Remove o link simbólico ekli
+if [ -L "$EKLI_LINK" ] || [ -f "$EKLI_LINK" ]; then
+    echo -e "${YELLOW}🗑️  Removendo link simbólico ekli...${NC}"
+    rm -f "$EKLI_LINK"
 fi
 
-# Binários legados (jera-cli)
-for legacy in "$HOME/.local/bin/jeracli" "$HOME/.local/bin/jcli" /usr/local/bin/jeracli /usr/local/bin/jcli; do
+# Binários legados (jera-cli / ek-cli antigo)
+for legacy in "$HOME/.local/bin/jeracli" "$HOME/.local/bin/jcli" "$HOME/.local/bin/ek-cli" /usr/local/bin/jeracli /usr/local/bin/jcli /usr/local/bin/ek-cli; do
     if [ -L "$legacy" ] || [ -f "$legacy" ]; then
         echo -e "${YELLOW}🗑️  Removendo legado: ${legacy}${NC}"
         rm -f "$legacy"

@@ -15,8 +15,8 @@ def urls(namespace=None):
     Use a opção --namespace para filtrar por um namespace específico.
     
     Exemplos:
-        $ ek-cli urls                    # Mostra URLs de todos os namespaces
-        $ ek-cli urls -n production      # Mostra URLs apenas do namespace production
+        $ ekli urls                    # Mostra URLs de todos os namespaces
+        $ ekli urls -n production      # Mostra URLs apenas do namespace production
     """
     try:
         # Se foi especificado um namespace, usa ele
@@ -196,8 +196,8 @@ def loadbalancer(namespace=None):
     Use a opção --namespace para filtrar por um namespace específico.
     
     Exemplos:
-        $ ek-cli loadbalancer                # Mostra LoadBalancers de todos os namespaces
-        $ ek-cli loadbalancer -n production  # Mostra LoadBalancers apenas do namespace production
+        $ ekli loadbalancer                # Mostra LoadBalancers de todos os namespaces
+        $ ekli loadbalancer -n production  # Mostra LoadBalancers apenas do namespace production
     """
     try:
         # Se foi especificado um namespace, usa ele

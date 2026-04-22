@@ -20,7 +20,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     # macOS - instala no diretório do usuário
     INSTALL_DIR="$HOME/.easy-kube-cli"
     WRAPPER_SCRIPT="$HOME/.local/bin/kube-cli"
-    ALIAS_SCRIPT="$HOME/.local/bin/ek-cli"
+    ALIAS_SCRIPT="$HOME/.local/bin/ekli"
     
     # Garante que o diretório .local/bin existe e está no PATH
     mkdir -p "$HOME/.local/bin"
@@ -41,7 +41,7 @@ else
     # Linux - instala globalmente
     INSTALL_DIR="/opt/easy-kube-cli"
     WRAPPER_SCRIPT="/usr/local/bin/kube-cli"
-    ALIAS_SCRIPT="/usr/local/bin/ek-cli"
+    ALIAS_SCRIPT="/usr/local/bin/ekli"
 fi
 
 # Verifica se estamos em um sistema Debian/Ubuntu
@@ -629,7 +629,7 @@ python3 -m kube_cli "$@"
 EOF
 fi
 
-# Link simbólico para o atalho ek-cli (mesmo wrapper que kube-cli)
+# Link simbólico para o atalho ekli (mesmo wrapper que kube-cli)
 ln -s "$WRAPPER_SCRIPT" "$ALIAS_SCRIPT"
 
 # Torna o wrapper executável
@@ -644,7 +644,7 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
 fi
 
 echo -e "\n${GREEN}✅ Easy Kube Cli instalada com sucesso!${NC}"
-echo -e "${YELLOW}Os comandos ${GREEN}kube-cli${YELLOW} e ${GREEN}ek-cli${YELLOW} agora estão disponíveis.${NC}"
+echo -e "${YELLOW}Os comandos ${GREEN}kube-cli${YELLOW} e ${GREEN}ekli${YELLOW} agora estão disponíveis.${NC}"
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
     echo -e "\n${YELLOW}⚠️ Para usar os comandos, certifique-se de que $HOME/.local/bin está no seu PATH:${NC}"
@@ -653,7 +653,7 @@ fi
 
 echo -e "\n${YELLOW}Para verificar a instalação:${NC}"
 echo -e "${GREEN}kube-cli --version${NC}"
-echo -e "${GREEN}ek-cli --version${NC}"
+echo -e "${GREEN}ekli --version${NC}"
 
 # Verifica se o AWS CLI precisa ser configurado
 if ! aws configure list &> /dev/null; then
