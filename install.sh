@@ -261,32 +261,14 @@ check_python() {
     fi
 }
 
-# Função para verificar e instalar pip
+# Garante pacotes de sistema para criar venv (não roda pip no Python do sistema — PEP 668 / externally-managed).
 check_pip() {
-    if ! command -v pip3 &> /dev/null; then
-        echo -e "${YELLOW}⚠️  pip não encontrado. Instalando...${NC}"
-        
-        if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-            # Linux (Ubuntu)
-            apt-get install -y python3-pip python3-setuptools
-            
-        elif [[ "$OSTYPE" == "darwin"* ]]; then
-            # macOS
-            brew install python-pip
-            
-        else
-            echo -e "${RED}❌ Sistema operacional não suportado para instalação automática do pip.${NC}"
-            echo -e "${YELLOW}Por favor, instale manualmente o pip.${NC}"
-            exit 1
-        fi
-    else
-        echo -e "${GREEN}✅ pip já está instalado.${NC}"
+    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        apt-get install -y python3-venv python3-full 2>/dev/null || apt-get install -y python3-venv
+        echo -e "${GREEN}✅ Ambiente Debian/Ubuntu pronto para venv (sem pip global).${NC}"
+    elif [[ "$OSTYPE" == "darwin"* ]]; then
+        echo -e "${GREEN}✅ macOS: pip será usado apenas dentro do .venv após python3 -m venv.${NC}"
     fi
-    
-    # Usa pip do sistema para atualizar
-    python3 -m pip install --upgrade pip setuptools wheel
-    
-    echo -e "${GREEN}✅ pip e pacotes básicos atualizados com sucesso!${NC}"
 }
 
 # Função para verificar e instalar pacotes necessários para o ambiente virtual
@@ -472,13 +454,11 @@ fi
 echo -e "${YELLOW}🔧 Criando ambiente virtual com Python $(python3 --version)...${NC}"
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    # macOS - criação de ambiente virtual mais simples
+    # macOS — python3 -m venv não usa pip global (evita PEP 668)
     python3 -m venv .venv || {
         echo -e "${RED}❌ Falha ao criar ambiente virtual no macOS.${NC}"
-        echo -e "${YELLOW}⚠️ Tentando método alternativo...${NC}"
-        
-        # Tenta instalar virtualenv via pip e usar
-        pip3 install virtualenv
+        echo -e "${YELLOW}⚠️ Tentando virtualenv (último recurso; pode usar --user no Homebrew)...${NC}"
+        PIP_BREAK_SYSTEM_PACKAGES=1 python3 -m pip install --user virtualenv 2>/dev/null || true
         python3 -m virtualenv .venv || {
             echo -e "${RED}❌ Todas as tentativas de criar o ambiente virtual falharam.${NC}"
             echo -e "${YELLOW}⚠️ Verifique se o Python está instalado corretamente no seu sistema.${NC}"
@@ -598,33 +578,29 @@ else
     echo -e "${GREEN}✅ Ambiente virtual ativado com sucesso!${NC}"
 fi
 
-# Atualiza pip e setuptools
-echo -e "${YELLOW}📦 Atualizando ferramentas de instalação...${NC}"
-python3 -m pip install --upgrade pip setuptools wheel || {
-    echo -e "${RED}❌ Falha ao atualizar pip e ferramentas.${NC}"
-    echo -e "${YELLOW}⚠️ Tentando método alternativo...${NC}"
-    
-    # Tenta instalar pip manualmente
-    curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
-    python3 get-pip.py
-    rm get-pip.py
+# Sempre usa o Python do venv (nunca pip no sistema — PEP 668 / externally-managed)
+VENV_PY="${INSTALL_DIR}/.venv/bin/python"
+if [[ ! -x "$VENV_PY" ]]; then
+    echo -e "${RED}❌ Interpretador do venv não encontrado: ${VENV_PY}${NC}"
+    exit 1
+fi
+
+# Atualiza pip e setuptools dentro do venv
+echo -e "${YELLOW}📦 Atualizando pip/setuptools/wheel no ambiente virtual...${NC}"
+"$VENV_PY" -m pip install --upgrade pip setuptools wheel || {
+    echo -e "${YELLOW}⚠️ Tentando instalar get-pip.py dentro do venv...${NC}"
+    curl -fsS https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+    "$VENV_PY" get-pip.py
+    rm -f get-pip.py
+    "$VENV_PY" -m pip install --upgrade pip setuptools wheel
 }
 
-echo -e "${YELLOW}📦 Instalando dependências...${NC}"
-pip install --use-pep517 -e . || {
-    echo -e "${RED}❌ Falha ao instalar dependências com pip.${NC}"
-    echo -e "${YELLOW}⚠️ Tentando método alternativo...${NC}"
-    
-    # Tenta instalar com python -m pip
-    python3 -m pip install --use-pep517 -e . || {
-        echo -e "${RED}❌ Falha ao instalar dependências.${NC}"
-        echo -e "${YELLOW}⚠️ Tentando instalar sem a flag --use-pep517...${NC}"
-        
-        # Tenta instalar sem a flag --use-pep517
-        python3 -m pip install -e . || {
-            echo -e "${RED}❌ Todas as tentativas de instalar dependências falharam.${NC}"
-            echo -e "${YELLOW}⚠️ A instalação pode não funcionar corretamente.${NC}"
-        }
+echo -e "${YELLOW}📦 Instalando dependências no venv...${NC}"
+"$VENV_PY" -m pip install --use-pep517 -e . || {
+    echo -e "${YELLOW}⚠️ Tentando instalar sem --use-pep517...${NC}"
+    "$VENV_PY" -m pip install -e . || {
+        echo -e "${RED}❌ Falha ao instalar dependências no venv.${NC}"
+        exit 1
     }
 }
 
