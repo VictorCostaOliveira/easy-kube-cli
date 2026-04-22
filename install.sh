@@ -108,6 +108,29 @@ install_python_ubuntu() {
     echo -e "${GREEN}✅ Pacotes de desenvolvimento Python instalados.${NC}"
 }
 
+# Coloca no PATH um python3 do Homebrew com versão >= 3.10 (Apple Silicon ou Intel).
+macos_prepend_homebrew_python() {
+    if ! command -v brew &> /dev/null; then
+        return 1
+    fi
+    # shellcheck disable=SC1090
+    if [[ -x /opt/homebrew/bin/brew ]]; then
+        eval "$(/opt/homebrew/bin/brew shellenv)"
+    elif [[ -x /usr/local/bin/brew ]]; then
+        eval "$(/usr/local/bin/brew shellenv)"
+    fi
+    local formula prefix bin
+    for formula in python@3.13 python@3.12 python@3.11 python@3.10 python; do
+        prefix="$(brew --prefix "$formula" 2>/dev/null)" || continue
+        bin="${prefix}/bin"
+        if [[ -x "${bin}/python3" ]] && "${bin}/python3" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)' 2>/dev/null; then
+            export PATH="${bin}:${PATH}"
+            return 0
+        fi
+    done
+    return 1
+}
+
 # Função para instalar Python e pip no macOS
 install_python_macos() {
     echo -e "${YELLOW}📦 Instalando Python 3.10+ no macOS via Homebrew...${NC}"
@@ -116,34 +139,54 @@ install_python_macos() {
     if ! command -v brew &> /dev/null; then
         echo -e "${YELLOW}🍺 Instalando Homebrew...${NC}"
         /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        if [[ -x /opt/homebrew/bin/brew ]]; then
+            eval "$(/opt/homebrew/bin/brew shellenv)"
+        elif [[ -x /usr/local/bin/brew ]]; then
+            eval "$(/usr/local/bin/brew shellenv)"
+        fi
     fi
     
     # Instala Python 3.10 apenas se não estiver instalado
     if ! brew list python@3.10 &> /dev/null; then
         brew install python@3.10
-        
-        # Adiciona ao PATH
-        if [[ -f "$HOME/.zshrc" ]]; then
-            echo 'export PATH="/usr/local/opt/python@3.10/bin:$PATH"' >> "$HOME/.zshrc"
-        fi
-        if [[ -f "$HOME/.bash_profile" ]]; then
-            echo 'export PATH="/usr/local/opt/python@3.10/bin:$PATH"' >> "$HOME/.bash_profile"
-        fi
-        
-        # Atualiza o PATH atual
-        export PATH="/usr/local/opt/python@3.10/bin:$PATH"
     else
-        echo -e "${GREEN}✅ Python 3.10 já está instalado via Homebrew.${NC}"
+        echo -e "${GREEN}✅ Python 3.10 (formula python@3.10) já está instalado via Homebrew.${NC}"
+    fi
+    
+    local py10_bin
+    py10_bin="$(brew --prefix python@3.10 2>/dev/null)/bin"
+    if [[ -d "$py10_bin" ]]; then
+        export PATH="${py10_bin}:${PATH}"
+        # Sugere PATH permanente (caminho real do prefix, funciona em Intel e Apple Silicon)
+        if [[ -f "$HOME/.zshrc" ]] && ! grep -q 'easy-kube-cli: python@3.10' "$HOME/.zshrc" 2>/dev/null; then
+            echo "# easy-kube-cli: python@3.10 (Homebrew)" >> "$HOME/.zshrc"
+            echo "export PATH=\"${py10_bin}:\$PATH\"" >> "$HOME/.zshrc"
+            echo -e "${YELLOW}✅ PATH do Python Homebrew adicionado ao .zshrc. Rode: source ~/.zshrc${NC}"
+        fi
+        if [[ -f "$HOME/.bash_profile" ]] && ! grep -q 'easy-kube-cli: python@3.10' "$HOME/.bash_profile" 2>/dev/null; then
+            echo "# easy-kube-cli: python@3.10 (Homebrew)" >> "$HOME/.bash_profile"
+            echo "export PATH=\"${py10_bin}:\$PATH\"" >> "$HOME/.bash_profile"
+            echo -e "${YELLOW}✅ PATH do Python Homebrew adicionado ao .bash_profile.${NC}"
+        fi
     fi
     
     # Instala pacotes de desenvolvimento
-    brew install python-setuptools python-wheel
+    brew install python-setuptools python-wheel 2>/dev/null || true
     
     echo -e "${GREEN}✅ Pacotes de desenvolvimento Python instalados.${NC}"
 }
 
 # Função para verificar e instalar Python
 check_python() {
+    # macOS: o /usr/bin/python3 costuma ser 3.9 — prioriza Homebrew 3.10+ antes de validar
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        if ! macos_prepend_homebrew_python; then
+            echo -e "${YELLOW}⚠️  Nenhum Python 3.10+ do Homebrew encontrado no PATH. Tentando instalar...${NC}"
+            install_python_macos
+            macos_prepend_homebrew_python || true
+        fi
+    fi
+
     # Verifica se Python 3.10+ está instalado
     if ! command -v python3 &> /dev/null; then
         echo -e "${YELLOW}⚠️  Python 3 não encontrado. Instalando...${NC}"
@@ -155,6 +198,7 @@ check_python() {
         elif [[ "$OSTYPE" == "darwin"* ]]; then
             # macOS
             install_python_macos
+            macos_prepend_homebrew_python || true
             
         else
             echo -e "${RED}❌ Sistema operacional não suportado para instalação automática do Python.${NC}"
@@ -169,7 +213,20 @@ check_python() {
     
     # Verifica se a versão é maior ou igual a 3.10
     if [[ $PYTHON_MAJOR -lt 3 ]] || [[ $PYTHON_MAJOR -eq 3 && $PYTHON_MINOR -lt 10 ]]; then
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            echo -e "${YELLOW}⚠️  python3 atual é ${PYTHON_MAJOR}.${PYTHON_MINOR}. Instalando Python 3.10 via Homebrew...${NC}"
+            install_python_macos
+            macos_prepend_homebrew_python || true
+            PYTHON_MAJOR=$(python3 -c 'import sys; print(sys.version_info.major)')
+            PYTHON_MINOR=$(python3 -c 'import sys; print(sys.version_info.minor)')
+        fi
+    fi
+
+    if [[ $PYTHON_MAJOR -lt 3 ]] || [[ $PYTHON_MAJOR -eq 3 && $PYTHON_MINOR -lt 10 ]]; then
         echo -e "${RED}❌ Python ${PYTHON_MAJOR}.${PYTHON_MINOR} não é suportado. Instale Python 3.10+.${NC}"
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            echo -e "${YELLOW}No macOS: brew install python@3.10 e garanta que o binário do Homebrew venha antes do /usr/bin no PATH (brew shellenv).${NC}"
+        fi
         exit 1
     fi
     
