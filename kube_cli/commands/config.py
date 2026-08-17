@@ -540,7 +540,8 @@ def status():
         table.add_row("Plataforma", "AWS EKS")
         table.add_row("Cluster", cluster.get('name') or "—")
         table.add_row("Região", cluster.get('region') or "—")
-        table.add_row("Profile", session.aws_profile() or "—")
+        # O profile do cluster, não o do login: é ele que o exec do contexto usa.
+        table.add_row("Profile", cluster.get('profile') or state.get('aws_profile') or "—")
 
     table.add_row("Contexto", current_context() or "—")
     table.add_row("Namespace", state.get('namespace') or "—")
@@ -548,6 +549,15 @@ def status():
 
     console.print()
     console.print(table)
+
+    # login-aws guarda o profile, mas quem manda na autenticação do cluster é o
+    # AWS_PROFILE pinado no exec do contexto pelo update-kubeconfig.
+    login_profile = state.get('aws_profile')
+    cluster_profile = cluster.get('profile')
+    if login_profile and cluster_profile and login_profile != cluster_profile:
+        console.print(f"\n⚠️  O login desta sessão é [bold]{login_profile}[/], mas este cluster autentica como [bold]{cluster_profile}[/].", style="bold yellow")
+        console.print(f"   Rode 'ekli use-cluster' para trocar para um cluster de {login_profile}.", style="dim")
+
     console.print("\nDica: 'eval $(ekli env)' faz o kubectl desta aba seguir esta sessão.", style="dim")
 
 
