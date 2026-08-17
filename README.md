@@ -76,6 +76,34 @@ kube-cli use-cluster meu-cluster-aws
 kube-cli use-cluster meu-cluster-aks -az -g meu-grupo-recursos
 ```
 
+### Sessões por aba
+
+Cada aba do terminal é uma sessão própria: cluster, profile AWS e namespace ficam
+isolados por aba, então dá para trabalhar em dois clusters ao mesmo tempo — inclusive
+em contas diferentes sob o mesmo SSO.
+
+```bash
+# aba 1
+ekli use-cluster        # conta A -> cluster A
+ekli use                # namespace da aba 1
+
+# aba 2 — a aba 1 continua no cluster A
+ekli use-cluster        # conta B -> cluster B
+
+ekli status             # cluster, profile e namespace desta aba
+eval $(ekli env)        # faz o kubectl digitado à mão seguir esta aba
+```
+
+Uma aba nova herda o estado da última sessão usada e passa a ter estado próprio no
+primeiro `use-cluster` ou `use`. Trocar de cluster limpa o namespace da aba, porque o
+namespace anterior não existe no cluster novo.
+
+A chave da sessão é o TTY da aba. Para uma sessão nomeada, que sobrevive ao fechar a
+aba: `export EKLI_SESSION=prod`.
+
+O estado vive em `~/.easy-kube-cli/sessions/<chave>/`, com um `kubeconfig` por sessão —
+o `~/.kube/config` global não é mais reescrito nas trocas de cluster.
+
 ## Comparação com kubectl
 
 Esta CLI nasceu porque, ao trabalhar entre namespaces, repetir `kubectl` e `-n meu-namespace` o tempo todo fica cansativo. A Easy Kube Cli reduz isso no dia a dia. Comparação com os comandos mais frequentes:
@@ -131,8 +159,10 @@ kube-cli exec
 - `login-azure`: Faz login no Azure interativamente
 - `init`: Configura AWS SSO e kubectl para cluster EKS
 - `init-azure`: Configura kubectl para cluster AKS
-- `use-cluster`: Alterna entre clusters (AWS EKS ou Azure AKS)
-- `use`: Define namespace atual
+- `use-cluster`: Alterna o cluster desta sessão (AWS EKS ou Azure AKS)
+- `use`: Define o namespace desta sessão
+- `status`: Mostra cluster, profile e namespace desta sessão
+- `env`: Exporta a sessão para o shell (`eval $(ekli env)`)
 - `pods`: Lista pods
 - `logs`: Visualiza logs de pods
 - `exec`: Abre shell em pods

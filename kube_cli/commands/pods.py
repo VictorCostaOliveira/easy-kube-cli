@@ -3,10 +3,10 @@ from rich.console import Console
 from rich.table import Table
 from rich.live import Live
 import inquirer
-import yaml
 import os
-from kubernetes import client, config
-from ..utils.kubernetes import format_age, get_pod_metrics, parse_resource_value
+from kubernetes import client
+from ..utils import session
+from ..utils.kubernetes import format_age
 from ..utils.common import load_namespace
 import subprocess
 import time
@@ -65,7 +65,7 @@ def pods(watch):
             console.print("❌ Namespace não definido. Use 'kube-cli use <namespace>' primeiro.", style="bold red")
             return
 
-        config.load_kube_config()
+        session.load_kube()
         v1 = client.CoreV1Api()
         
         if watch:
@@ -232,7 +232,7 @@ def exec_pod(pod_name=None):
 def pods_by_node(namespace=None):
     """Lista todos os pods agrupados por nó, opcionalmente filtrados por namespace."""
     try:
-        config.load_kube_config()
+        session.load_kube()
         v1 = client.CoreV1Api()
         
         # Se nenhum namespace for especificado, busca todos os namespaces
@@ -367,7 +367,7 @@ def describe(pod_name=None):
             return
             
         # Obtém os detalhes do pod
-        config.load_kube_config()
+        session.load_kube()
         v1 = client.CoreV1Api()
         pod = v1.read_namespaced_pod(selected_pod, namespace)
         
@@ -637,7 +637,7 @@ def delete(pod_names=None, force=False, all=False):
             console.print("❌ Namespace não definido. Use 'kube-cli use <namespace>' primeiro.", style="bold red")
             return
 
-        config.load_kube_config()
+        session.load_kube()
         v1 = client.CoreV1Api()
         
         # Busca todos os pods no namespace

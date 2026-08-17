@@ -2,8 +2,9 @@ import click
 from rich.console import Console
 from rich.table import Table
 import inquirer
-from kubernetes import client, config
-from ..utils.kubernetes import get_pod_metrics, parse_resource_value, format_age
+from kubernetes import client
+from ..utils import session
+from ..utils.kubernetes import get_pod_metrics, parse_resource_value
 
 console = Console()
 
@@ -12,7 +13,7 @@ console = Console()
 def pod_metrics(namespace=None):
     """Mostra uma análise detalhada dos recursos dos pods."""
     try:
-        config.load_kube_config()
+        session.load_kube()
         v1 = client.CoreV1Api()
         
         if not namespace:
@@ -175,7 +176,7 @@ def pod_metrics(namespace=None):
 def all_metrics():
     """Mostra uma análise detalhada dos recursos de todos os pods em todos os namespaces."""
     try:
-        config.load_kube_config()
+        session.load_kube()
         v1 = client.CoreV1Api()
         
         console.print("\n🔄 Analisando recursos de todos os namespaces...", style="yellow")

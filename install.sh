@@ -409,9 +409,11 @@ if [ -f "$WRAPPER_SCRIPT" ]; then
     rm -f "$ALIAS_SCRIPT"
 fi
 
-# Remove o diretório de instalação
+# Remove a instalação anterior preservando o estado.
+# No macOS INSTALL_DIR é ~/.easy-kube-cli, o mesmo lugar onde ficam as sessões.
 if [ -d "$INSTALL_DIR" ]; then
-    rm -rf "$INSTALL_DIR"
+    find "$INSTALL_DIR" -mindepth 1 -maxdepth 1 \
+        ! -name config ! -name sessions -exec rm -rf {} +
 fi
 
 # Cria diretório de instalação

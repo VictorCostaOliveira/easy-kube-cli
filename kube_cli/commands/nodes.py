@@ -1,8 +1,9 @@
 import click
 from rich.console import Console
 from rich.table import Table
-from kubernetes import client, config
-from ..utils.kubernetes import format_age, get_pod_metrics, parse_resource_value
+from kubernetes import client
+from ..utils import session
+from ..utils.kubernetes import format_age, parse_resource_value
 import inquirer
 import subprocess
 
@@ -12,7 +13,7 @@ console = Console()
 def nodes():
     """Lista todos os nós do cluster com informações detalhadas."""
     try:
-        config.load_kube_config()
+        session.load_kube()
         v1 = client.CoreV1Api()
         
         console.print("\n🔄 Obtendo informações dos nós...", style="yellow")
@@ -86,7 +87,7 @@ def nodes():
 def describe_node(node_name=None):
     """Mostra informações detalhadas de um nó."""
     try:
-        config.load_kube_config()
+        session.load_kube()
         v1 = client.CoreV1Api()
         
         # Lista todos os nós
@@ -228,7 +229,7 @@ def describe(node_name=None):
 def node_metrics(node_name=None):
     """Mostra métricas de utilização de CPU e memória por nó com os top 5 pods que mais consomem recursos."""
     try:
-        config.load_kube_config()
+        session.load_kube()
         v1 = client.CoreV1Api()
         
         console.print("\n🔄 Obtendo informações de utilização dos nós...", style="yellow")

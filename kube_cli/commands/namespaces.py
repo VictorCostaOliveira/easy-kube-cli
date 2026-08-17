@@ -1,7 +1,8 @@
 import click
 from rich.console import Console
 from rich.table import Table
-from kubernetes import client, config
+from kubernetes import client
+from ..utils import session
 import time
 
 console = Console()
@@ -11,7 +12,7 @@ def namespaces():
     """📋 Lista todos os namespaces disponíveis no cluster"""
     try:
         # Carrega a configuração do kubernetes
-        config.load_kube_config()
+        session.load_kube()
         v1 = client.CoreV1Api()
         
         # Cria uma tabela rica para exibir os namespaces
