@@ -1,80 +1,38 @@
-from kubernetes import client, config
 from rich.console import Console
 import subprocess
 import time
-import os
-import yaml
 
 console = Console()
 
-def check_aws_sso_config():
-    """Check if AWS SSO is configured properly"""
-    try:
-        # Verifica se existe o arquivo de configuração do SSO
-        home = os.path.expanduser("~")
-        config_file = os.path.join(home, ".aws", "config")
-        
-        if not os.path.exists(config_file):
-            return False
-            
-        # Lê o arquivo de configuração
-        with open(config_file, 'r') as f:
-            config_content = f.read()
-            
-        # Verifica se as configurações necessárias estão presentes
-        required_configs = [
-            "sso_session",
-            "sso_account_id",
-            "sso_role_name",
-            "region",
-            "output"
-        ]
-        
-        for config in required_configs:
-            if config not in config_content:
-                return False
-                
-        return True
-    except Exception as e:
-        console.print(f"Erro ao verificar configuração SSO: {str(e)}", style="bold red")
-        return False
+def profile_authenticated(profile):
+    """Diz se ESTE profile tem credencial válida agora."""
+    result = subprocess.run(
+        ["aws", "sts", "get-caller-identity", "--profile", profile],
+        capture_output=True,
+        text=True
+    )
+    return result.returncode == 0
 
-def check_aws_sso_session():
-    """Check if there's an active AWS SSO session"""
-    try:
-        # Primeiro tenta encontrar o profile configurado
-        home = os.path.expanduser("~")
-        config_file = os.path.join(home, ".aws", "config")
-        
-        if not os.path.exists(config_file):
-            return False
-            
-        # Tenta com cada profile configurado
-        result = subprocess.run(
-            ["aws", "configure", "list-profiles"],
-            capture_output=True,
-            text=True
-        )
-        
-        if result.returncode == 0:
-            profiles = result.stdout.strip().split('\n')
-            
-            for profile in profiles:
-                try:
-                    result = subprocess.run(
-                        ["aws", "sts", "get-caller-identity", "--profile", profile],
-                        capture_output=True,
-                        text=True
-                    )
-                    if result.returncode == 0:
-                        return True
-                except:
-                    continue
-                    
-        return False
-    except Exception as e:
-        console.print(f"Erro ao verificar sessão SSO: {str(e)}", style="dim red")
-        return False
+def ensure_profile_session(profile):
+    """Garante sessão válida para o profile escolhido, logando se preciso.
+
+    Profiles da mesma sso_session compartilham o token em ~/.aws/sso/cache, então
+    trocar de conta normalmente resolve aqui sem abrir o navegador.
+    """
+    if profile_authenticated(profile):
+        return True
+
+    console.print(f"\n🔑 Fazendo login com o profile [bold green]{profile}[/]...", style="bold blue")
+    # Sem capture_output: o login precisa do terminal interativo.
+    subprocess.run(["aws", "sso", "login", "--profile", profile], check=False)
+
+    if profile_authenticated(profile):
+        return True
+
+    console.print(f"❌ Erro ao fazer login com o profile '{profile}'", style="bold red")
+    console.print("\n📝 Se o profile ainda não está configurado:", style="bold blue")
+    console.print("   aws configure sso", style="bold green")
+    return False
 
 def check_azure_cli_installed():
     """Verifica se o Azure CLI está instalado"""
@@ -154,11 +112,15 @@ def set_azure_subscription(subscription):
     except Exception:
         return False
 
-def get_aks_credentials(cluster_name, resource_group=None, subscription=None):
+def get_aks_credentials(cluster_name, resource_group=None, subscription=None, kubeconfig=None):
     """Obtém as credenciais para um cluster AKS"""
     try:
         cmd = ["az", "aks", "get-credentials", "--name", cluster_name, "--overwrite-existing"]
-        
+
+        if kubeconfig:
+            # O default do az é ~/.kube/config literal, então o arquivo vai explícito.
+            cmd.extend(["--file", kubeconfig])
+
         if resource_group:
             cmd.extend(["--resource-group", resource_group])
             
@@ -173,41 +135,6 @@ def get_aks_credentials(cluster_name, resource_group=None, subscription=None):
         return result.returncode == 0, result.stdout, result.stderr
     except Exception as e:
         return False, "", str(e)
-
-def get_current_cluster_info():
-    """Obtém informações do cluster atual configurado na Easy Kube Cli"""
-    try:
-        config_path = os.path.expanduser('~/.easy-kube-cli/config')
-        if os.path.exists(config_path):
-            with open(config_path, 'r') as f:
-                config_data = yaml.safe_load(f) or {}
-                
-            # Retorna informações do cluster atual, se disponíveis
-            if 'current_cluster' in config_data:
-                return config_data['current_cluster']
-                
-        # Se não encontrar informações configuradas, tenta obter do kubectl
-        try:
-            # Obtém o nome do contexto atual
-            result = subprocess.run(
-                ["kubectl", "config", "current-context"],
-                capture_output=True,
-                text=True,
-                check=True
-            )
-            current_context = result.stdout.strip()
-            
-            # Retorna pelo menos o nome do contexto
-            return {
-                'context': current_context,
-                'name': 'desconhecido',  # Nome real do cluster não é facilmente identificável a partir do contexto
-                'profile': 'desconhecido'
-            }
-        except:
-            return None
-    except Exception as e:
-        console.print(f"Erro ao obter informações do cluster: {str(e)}", style="dim red")
-        return None
 
 def format_age(timestamp):
     """Formata a idade de um recurso baseado em seu timestamp"""

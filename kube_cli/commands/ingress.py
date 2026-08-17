@@ -2,7 +2,6 @@ import click
 from rich.console import Console
 from rich.table import Table
 import subprocess
-from ..utils.common import load_namespace
 
 console = Console()
 
@@ -24,12 +23,6 @@ def urls(namespace=None):
         selected_namespace = namespace
         show_all = selected_namespace is None
         
-        # Se não especificou namespace, usa o configurado apenas para mostrar no cabeçalho
-        configured_namespace = None
-        if not selected_namespace and not show_all:
-            configured_namespace = load_namespace()
-            selected_namespace = configured_namespace
-
         # Executa o comando kubectl para obter os Ingresses
         cmd = ["kubectl", "get", "ingress"]
         
@@ -205,12 +198,6 @@ def loadbalancer(namespace=None):
         selected_namespace = namespace
         show_all = selected_namespace is None
         
-        # Se não especificou namespace, usa o configurado apenas para mostrar no cabeçalho
-        configured_namespace = None
-        if not selected_namespace and not show_all:
-            configured_namespace = load_namespace()
-            selected_namespace = configured_namespace
-
         # Executa o comando kubectl para obter os Ingresses
         cmd = ["kubectl", "get", "ingress"]
         

@@ -4,7 +4,6 @@ from rich.table import Table
 import subprocess
 import json
 import inquirer
-from ..utils.common import load_namespace
 
 console = Console()
 

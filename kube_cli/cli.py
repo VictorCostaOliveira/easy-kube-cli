@@ -9,38 +9,39 @@ from .commands.commands import (
     init, use, login_aws, use_cluster, clusters,
     nodes, namespaces, urls, loadbalancer,
     pvs, pvcs, storage, node_metrics, describe_node,
-    login_azure, init_azure
+    login_azure, init_azure, status, env
 )
+from .utils import session
 
 console = Console()
 
-class KubeContext:
-    def __init__(self):
-        self.namespace = None
-
-pass_context = click.make_pass_decorator(KubeContext, ensure=True)
-
 @click.group()
 @click.version_option(version='1.0.0', prog_name='Easy Kube Cli')
-@click.pass_context
-def cli(ctx):
+def cli():
     """Easy Kube Cli — gerencie AWS, Azure e Kubernetes com menos atrito.
 
     CLI para operações comuns em clusters Kubernetes (EKS, AKS e outros).
-    
+
+    \b
+    Cada aba do terminal é uma sessão própria: cluster, profile e namespace ficam
+    isolados por aba. Uma aba nova herda o estado da última usada e diverge no
+    primeiro use-cluster ou use. Para sessões nomeadas: export EKLI_SESSION=prod
+
     \b
     Comandos Principais:
-    
+
     \b
     ⚡ Configuração:
       init          Configura AWS SSO e kubectl para o cluster
       init-azure    Configura Azure CLI e kubectl para o cluster AKS
-      use           Define o namespace atual para operações
-      use-cluster   Alterna entre diferentes clusters Kubernetes (AWS ou Azure)
-      clusters      Lista todos os clusters configurados
+      use           Define o namespace desta sessão
+      use-cluster   Alterna o cluster desta sessão (AWS ou Azure)
+      clusters      Lista os clusters configurados nesta sessão
+      status        Mostra cluster, profile e namespace desta sessão
+      env           Exporta a sessão para o shell: eval $(ekli env)
       login-aws     Faz login no AWS SSO de forma interativa
       login-azure   Faz login no Azure de forma interativa
-    
+
     \b
     📊 Visualização:
       pods         Lista todos os pods no namespace atual
@@ -106,14 +107,23 @@ def cli(ctx):
        $ kube-cli use-cluster -az          # Força o uso de clusters Azure
        $ kube-cli use-cluster my-cluster   # Usa cluster AWS específico
        $ kube-cli use-cluster my-aks -az -g my-group  # Usa cluster Azure específico
-    
+
+    \b
+    4. Trabalhe em dois clusters ao mesmo tempo:
+       # aba 1
+       $ ekli use-cluster           # conta A -> cluster A
+       # aba 2 (a aba 1 continua no cluster A)
+       $ ekli use-cluster           # conta B -> cluster B
+       $ ekli status                # onde esta aba está
+       $ eval $(ekli env)           # o kubectl à mão segue esta aba
+
     \b
     Use --help em qualquer comando para mais informações:
        $ kube-cli init --help
        $ kube-cli use-cluster --help
        etc.
     """
-    ctx.obj = KubeContext()
+    session.apply_env()
 
 # Registra os comandos
 cli.add_command(init)
@@ -140,6 +150,8 @@ cli.add_command(pvs)
 cli.add_command(pvcs)
 cli.add_command(storage)
 cli.add_command(node_metrics)
+cli.add_command(status)
+cli.add_command(env)
 
 # Adiciona aliases
 cli.add_command(login_aws, name='aws-login')
