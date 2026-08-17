@@ -118,6 +118,7 @@ Esta CLI nasceu porque, ao trabalhar entre namespaces, repetir `kubectl` e `-n m
 | **Ver logs de um pod**       | `kube-cli logs <pod>`           | `kubectl logs <pod>`                                       |
 | **Executar shell em um pod** | `kube-cli exec <pod>`           | `kubectl exec -it <pod> -- /bin/sh`                       |
 | **Ver detalhes de um pod**   | `kube-cli describe <pod>`       | `kubectl describe pod <pod>`                              |
+| **Ver variáveis de ambiente** | `ekli pod-env <alvo>`          | `kubectl exec <alvo> -- printenv`                         |
 | **Listar serviços**          | `kube-cli loadbalancer` ou `lb` | `kubectl get svc`                                         |
 | **Listar ingresses**         | `kube-cli urls`                 | `kubectl get ingress --all-namespaces`                    |
 | **Listar nós**               | `kube-cli nodes`                | `kubectl get nodes`                                       |
@@ -153,6 +154,24 @@ kube-cli logs
 kube-cli exec
 ```
 
+#### Ver Variáveis de Ambiente de um Pod
+```bash
+# Escolhe o pod na lista e mostra tudo
+ekli pod-env
+
+# Aceita workload, não só pod — o namespace vem da sessão
+ekli pod-env deploy/ecx-corp-api-application
+
+# Filtra por nome da variável (regex)
+ekli pod-env deploy/ecx-corp-api-application -f '^SWAP_'
+
+# Container específico, quando o pod tem sidecar
+ekli pod-env meu-pod -c sidecar
+```
+
+Lê o ambiente real do processo com `printenv`, então valores que vêm de ConfigMap e
+Secret já aparecem resolvidos. A saída é `NOME=valor`, uma por linha, para copiar e colar.
+
 ## Comandos Disponíveis
 
 - `login-aws`: Faz login no AWS SSO interativamente
@@ -166,6 +185,7 @@ kube-cli exec
 - `pods`: Lista pods
 - `logs`: Visualiza logs de pods
 - `exec`: Abre shell em pods
+- `pod-env` (alias `printenv`): Mostra as variáveis de ambiente de um pod
 - `describe`: Mostra detalhes de pods
 - `urls`: Lista URLs de Ingresses
 - `loadbalancer`: Lista URLs dos LoadBalancers

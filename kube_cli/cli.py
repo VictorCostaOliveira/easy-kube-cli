@@ -4,7 +4,7 @@
 import click
 from rich.console import Console
 from .commands.commands import (
-    pods, logs, exec_pod, pods_by_node, describe, delete,
+    pods, logs, exec_pod, pods_by_node, describe, delete, pod_env,
     pod_metrics, all_metrics,
     init, use, login_aws, use_cluster, clusters,
     nodes, namespaces, urls, loadbalancer,
@@ -70,6 +70,7 @@ def cli():
       logs         Visualiza logs de um pod (com opção de follow)
       exec         Abre um shell interativo dentro do pod
       delete       Deleta um ou mais pods no namespace atual
+      pod-env      Mostra as variáveis de ambiente de um pod (alias: printenv)
     
     \b
     Fluxo básico de uso:
@@ -151,12 +152,14 @@ cli.add_command(pvcs)
 cli.add_command(storage)
 cli.add_command(node_metrics)
 cli.add_command(status)
+cli.add_command(pod_env)
 cli.add_command(env)
 
 # Adiciona aliases
 cli.add_command(login_aws, name='aws-login')
 cli.add_command(login_azure, name='azure-login')
 cli.add_command(loadbalancer, name='lb')
+cli.add_command(pod_env, name='printenv')
 
 if __name__ == '__main__':
     cli() 

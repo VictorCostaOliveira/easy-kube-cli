@@ -2,8 +2,10 @@ import click
 from rich.console import Console
 from rich.table import Table
 from rich.live import Live
+from rich.text import Text
 import inquirer
 import os
+import re
 from kubernetes import client
 from ..utils import session
 from ..utils.kubernetes import format_age
@@ -12,6 +14,10 @@ import subprocess
 import time
 
 console = Console()
+
+# Nome válido de variável de ambiente: separa uma variável nova de uma linha de
+# continuação de valor multilinha na saída do printenv.
+ENV_NAME = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
 
 def generate_pods_table(v1, namespace):
     """Gera a tabela de pods para exibição"""
@@ -171,6 +177,118 @@ def logs(pod_name=None, follow=False, tail=None, all=False, max_log_requests=20)
                 console.print(f"❌ Erro inesperado: {str(e)}", style="bold red")
     except Exception as e:
         console.print(f"❌ Erro ao obter logs: {str(e)}", style="bold red")
+
+def parse_printenv(output, pattern=None):
+    """Converte a saída do printenv em pares (nome, valor), ordenados por nome.
+
+    Uma linha que não começa com nome válido de variável é continuação de um valor
+    multilinha (JSON, texto indentado), não uma variável nova.
+
+    ponytail: a saída do printenv é ambígua para valor multilinha — uma linha de
+    base64 terminando em '=' é idêntica a uma variável de valor vazio, e aparece
+    como entrada extra. Mesma limitação do 'printenv | grep'. Para resolver de
+    verdade seria preciso saída delimitada por NUL, que o busybox não tem.
+    """
+    variables = []
+    for line in output.rstrip('\n').split('\n'):
+        name, separator, value = line.partition('=')
+        if separator and ENV_NAME.match(name):
+            variables.append([name, value])
+        elif variables:
+            variables[-1][1] += '\n' + line
+
+    if pattern:
+        variables = [v for v in variables if pattern.search(v[0])]
+
+    return sorted(variables)
+
+
+def select_pod(namespace, message):
+    """Lista os pods do namespace e devolve o escolhido."""
+    result = subprocess.run(
+        ["kubectl", "get", "pods", "-n", namespace, "-o", "name"],
+        capture_output=True,
+        text=True,
+        check=True
+    )
+
+    pod_names = [pod.replace('pod/', '') for pod in result.stdout.strip().split('\n') if pod.strip()]
+    if not pod_names:
+        console.print("❌ Nenhum pod encontrado no namespace atual.", style="bold red")
+        return None
+
+    answers = inquirer.prompt([inquirer.List('pod', message=message, choices=pod_names)])
+    return answers['pod'] if answers else None
+
+
+@click.command(name="pod-env")
+@click.argument('target', required=False)
+@click.option('--filter', '-f', 'name_filter', help="Regex no nome da variável, ex: '^SWAP_'")
+@click.option('--container', '-c', help='Container do pod, quando houver mais de um')
+def pod_env(target=None, name_filter=None, container=None):
+    """Mostra as variáveis de ambiente de um pod, no namespace da sessão.
+
+    Lê o ambiente real do processo com printenv, então já vem resolvido o que
+    entra por ConfigMap e Secret. Aceita um pod ou um workload (deploy/nome,
+    sts/nome); sem argumento, abre a lista de pods.
+
+    \b
+    Exemplos:
+        $ ekli pod-env                                      # escolhe o pod na lista
+        $ ekli pod-env deploy/ecx-corp-api-application
+        $ ekli pod-env deploy/ecx-corp-api-application -f '^SWAP_'
+        $ ekli pod-env meu-pod -c sidecar
+    """
+    try:
+        namespace = load_namespace()
+        if not namespace:
+            console.print("❌ Namespace não definido. Use 'ekli use <namespace>' primeiro.", style="bold red")
+            return
+
+        selected = target or select_pod(namespace, "Selecione um pod para ver as variáveis")
+        if not selected:
+            return
+
+        try:
+            pattern = re.compile(name_filter) if name_filter else None
+        except re.error as e:
+            console.print(f"❌ Regex inválida em --filter: {e}", style="bold red")
+            return
+
+        cmd = ["kubectl", "exec", selected, "-n", namespace]
+        if container:
+            cmd.extend(["-c", container])
+        cmd.extend(["--", "printenv"])
+
+        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+
+        if result.returncode != 0:
+            console.print(f"❌ Erro ao ler as variáveis de '{selected}':", style="bold red")
+            console.print(result.stderr.strip() or "(sem detalhes)", style="dim red")
+            if "executable file not found" in result.stderr:
+                console.print("\n📝 O container não tem printenv. Veja o que está declarado no spec:", style="bold blue")
+                console.print(f"   kubectl describe {selected} -n {namespace}", style="bold green")
+            return
+
+        variables = parse_printenv(result.stdout, pattern)
+
+        if not variables:
+            with_filter = f" com o filtro '{name_filter}'" if name_filter else ""
+            console.print(f"ℹ️ Nenhuma variável encontrada em '{selected}'{with_filter}.", style="bold yellow")
+            return
+
+        console.print(f"\n🔍 {len(variables)} variável(is) em [bold cyan]{selected}[/] · namespace [bold green]{namespace}[/]", style="bold")
+        if name_filter:
+            console.print(f"   filtro: {name_filter}", style="dim")
+        console.print()
+
+        for name, value in sorted(variables):
+            # Text.assemble não interpreta markup: valor com [ ] sai intacto.
+            console.print(Text.assemble((name, "bold cyan"), ("=", "dim"), value))
+
+    except Exception as e:
+        console.print(f"❌ Erro ao obter variáveis de ambiente: {str(e)}", style="bold red")
+
 
 @click.command(name="exec")
 @click.argument('pod_name', required=False)
