@@ -25,7 +25,10 @@ git remote add origin git@github.com:VictorCostaOliveira/easy-kube-cli.git
 
 ### Migrando da versão antiga (jera-cli)
 
-- Copie `~/.jera/config` para `~/.easy-kube-cli/config` (crie o diretório se precisar), ou rode `kube-cli init` de novo.
+- Copie `~/.jera/config` para `~/.easy-kube-cli/config` (crie o diretório se precisar), ou rode `ekli init` de novo.
+  O arquivo legado é a semente da **primeira** sessão da máquina. Se você já usou o `ekli` e existem
+  sessões em `~/.easy-kube-cli/sessions/`, copiar para lá não tem efeito — nesse caso rode `ekli use-cluster`
+  na aba que quiser apontar.
 - Desinstale bins antigos (`jeracli`, `jcli`) se ainda existirem; use `./uninstall.sh` da versão nova para limpar destinos atuais e legados quando fizer sentido.
 
 ### macOS: avisos urllib3 / OpenSSL
@@ -174,18 +177,24 @@ Secret já aparecem resolvidos. A saída é `NOME=valor`, uma por linha, para co
 
 ## Comandos Disponíveis
 
-- `login-aws`: Faz login no AWS SSO interativamente
-- `login-azure`: Faz login no Azure interativamente
+- `login-aws`: Faz login no AWS SSO interativamente (alias `aws-login`)
+- `login-azure`: Faz login no Azure interativamente (alias `azure-login`)
 - `init`: Configura AWS SSO e kubectl para cluster EKS
 - `init-azure`: Configura kubectl para cluster AKS
 - `use-cluster`: Alterna o cluster desta sessão (AWS EKS ou Azure AKS)
 - `use`: Define o namespace desta sessão
+- `clusters`: Lista os clusters configurados nesta sessão
+- `namespaces`: Lista os namespaces do cluster com status
 - `status`: Mostra cluster, profile e namespace desta sessão
 - `env`: Exporta a sessão para o shell (`eval $(ekli env)`)
 - `pods`: Lista pods
 - `logs`: Visualiza logs de pods
 - `exec`: Abre shell em pods
 - `pod-env` (alias `printenv`): Mostra as variáveis de ambiente de um pod
+- `delete`: Deleta um ou mais pods do namespace
+- `pods-by-node`: Lista os pods agrupados por nó
+- `pod-metrics`: Análise de recursos dos pods do namespace
+- `all-metrics`: Análise de recursos de todos os pods
 - `describe`: Mostra detalhes de pods
 - `urls`: Lista URLs de Ingresses
 - `loadbalancer`: Lista URLs dos LoadBalancers
@@ -195,6 +204,7 @@ Secret já aparecem resolvidos. A saída é `NOME=valor`, uma por linha, para co
 - `storage`: Visão consolidada de armazenamento
 - `nodes`: Lista nós do cluster
 - `node-metrics`: Mostra métricas de utilização dos nós
+- `describe-node`: Mostra detalhes de um nó
 
 ## Desenvolvimento
 
@@ -269,12 +279,15 @@ kube-cli describe meu-pod-nome
 
 ### Cenário 2: Acessando um Container
 ```bash
-# Abra um shell interativo em um pod
-kube-cli exec meu-pod-nome
+# Abra um shell interativo em um pod (roda /bin/sh)
+ekli exec meu-pod-nome
 
-# Execute um comando específico em um pod
-kube-cli exec meu-pod-nome -- ls /app
+# Veja as variáveis de ambiente sem abrir shell
+ekli pod-env meu-pod-nome
 ```
+
+Para um comando pontual, o `exec` do ekli não serve — ele abre `/bin/sh` fixo. Use o kubectl:
+`kubectl exec -n <namespace> meu-pod-nome -- ls /app`.
 
 ### Cenário 3: Gerenciando Namespaces
 ```bash
